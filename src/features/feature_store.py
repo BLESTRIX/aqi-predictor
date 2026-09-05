@@ -1,9 +1,10 @@
-import hopsworks
-import pandas as pd
-from src.config import CONFIG, HOPSWORKS_API_KEY
 import os
 os.environ.setdefault("TMPDIR", "C:/tmp")
 os.makedirs("C:/tmp", exist_ok=True)
+import hopsworks
+import pandas as pd
+from src.config import CONFIG, HOPSWORKS_API_KEY
+
 def push_to_feature_store(df: pd.DataFrame) -> None:
     """Authenticates with Hopsworks and writes the engineered features into the Feature Store."""
     if not HOPSWORKS_API_KEY:
@@ -27,6 +28,7 @@ def push_to_feature_store(df: pd.DataFrame) -> None:
         event_time="event_timestamp",
         description=f"Air Quality features and target variables for {CONFIG['location']['name']}",
         online_enabled=True,
+        time_travel_format="HUDI"
     )
 
     # 3. Upload feature data frame
