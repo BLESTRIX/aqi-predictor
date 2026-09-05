@@ -28,3 +28,4 @@ hopsworks==5.0.*        # 4.6+ is numpy 2.x compatible
 
 # ── Testing ──────────────────────────────────────────────────
 pytest>=8.0.0,<9.0.0
+hopsworks[python]>=5.0.*
