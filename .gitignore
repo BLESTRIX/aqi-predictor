@@ -1,0 +1,26 @@
+# Environment & Virtual Envs
+.env
+venv/
+env/
+.venv/
+
+# Python Caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Local Data & Models
+data/
+saved_models/
+*.pkl
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Hopsworks temporary caches
+.hopsworks/

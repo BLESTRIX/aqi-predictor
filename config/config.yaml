@@ -1,0 +1,20 @@
+location:
+  name: "Islamabad"
+  latitude: 33.6844
+  longitude: 73.0479
+
+api:
+  provider: "aqicn"
+  base_url: "https://api.waqi.info/feed"
+
+feature_store:
+  project_name: "pakistan_aqi_predictor"
+  feature_group_name: "islamabad_aqi_features"
+  feature_group_version: 1
+
+model:
+  target_columns:
+    - "target_aqi_24h"
+    - "target_aqi_48h"
+    - "target_aqi_72h"
+  sliding_window_days: 60
