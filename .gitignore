@@ -12,9 +12,7 @@ __pycache__/
 .pytest_cache/
 
 # Local Data & Models
-data/
-saved_models/
-*.pkl
+
 
 # IDE & OS
 .vscode/
