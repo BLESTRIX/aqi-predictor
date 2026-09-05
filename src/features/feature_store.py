@@ -1,6 +1,3 @@
-import os
-os.environ.setdefault("TMPDIR", "C:/tmp")
-os.makedirs("C:/tmp", exist_ok=True)
 import hopsworks
 import pandas as pd
 from src.config import CONFIG, HOPSWORKS_API_KEY

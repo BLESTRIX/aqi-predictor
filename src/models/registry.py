@@ -72,11 +72,14 @@ class HopsworksModelRegistry:
 # ── Standalone functions (used by train.py and predict.py) ──────────────────
 
 def upload_model(model, model_name: str, metrics: dict, description: str):
-    """Saves model locally and uploads it to Hopsworks Model Registry."""
     if not HOPSWORKS_API_KEY:
         raise ValueError("HOPSWORKS_API_KEY is not set.")
 
+    import shutil
     local_dir = "saved_models"
+    if os.path.exists(local_dir):
+        shutil.rmtree(local_dir)
+    os.makedirs(local_dir, exist_ok=True)
     os.makedirs(local_dir, exist_ok=True)
     model_path = os.path.join(local_dir, "model.pkl")
     joblib.dump(model, model_path)
@@ -84,8 +87,9 @@ def upload_model(model, model_name: str, metrics: dict, description: str):
 
     logger.info("Authenticating with Hopsworks...")
     project = hopsworks.login(
-    api_key_value=HOPSWORKS_API_KEY,
-    project=CONFIG["feature_store"]["project_name"])
+        api_key_value=HOPSWORKS_API_KEY,
+        project=CONFIG["feature_store"]["project_name"])
+    mr = project.get_model_registry()          # ← add this line
 
     logger.info(f"Uploading model '{model_name}' to registry...")
     hs_model = mr.python.create_model(
@@ -95,7 +99,6 @@ def upload_model(model, model_name: str, metrics: dict, description: str):
     )
     hs_model.save(local_dir)
     logger.info(f"Model '{model_name}' successfully registered!")
-
 
 def download_model(model_name: str, version: int = None):
     """Downloads a specific model version from the registry."""

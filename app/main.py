@@ -14,11 +14,22 @@ from src.models.predict import run_inference
 # Page Config
 st.set_page_config(page_title="Islamabad AQI Predictor", layout="wide", page_icon="🌤️")
 
+# Per-horizon confidence, based on measured R² from model comparison
+# (24h ≈ 0.80, 48h ≈ 0.60, 72h ≈ 0.46-0.50 across RF/XGBoost/Ridge)
+HORIZON_CONFIDENCE = {
+    "24h": {"r2": 0.80, "label": "High confidence"},
+    "48h": {"r2": 0.60, "label": "Moderate confidence"},
+    "72h": {"r2": 0.48, "label": "Lower confidence"},
+}
+
+HAZARDOUS_THRESHOLD = 200  # "Very Unhealthy" and above triggers an alert banner
+
+
 def get_aqi_category(aqi_value):
     """Return category name, CSS color, and health recommendation based on US-AQI standard."""
     if aqi_value is None or pd.isna(aqi_value):
         return "Unknown", "gray", "N/A"
-    
+
     val = float(aqi_value)
     if val <= 50:
         return "Good", "green", "Air quality is satisfactory, and air pollution poses little or no risk."
@@ -33,6 +44,30 @@ def get_aqi_category(aqi_value):
     else:
         return "Hazardous", "maroon", "Health warning of emergency conditions: everyone is more likely to be affected."
 
+
+def render_hazard_alerts(current_aqi, forecast_24h, forecast_48h, forecast_72h):
+    """Displays a prominent alert banner if current or any forecasted AQI crosses the hazardous threshold."""
+    checks = [
+        ("Current", current_aqi),
+        ("24h forecast", forecast_24h),
+        ("48h forecast", forecast_48h),
+        ("72h forecast", forecast_72h),
+    ]
+
+    triggered = [(label, val) for label, val in checks if val is not None and val >= HAZARDOUS_THRESHOLD]
+
+    if triggered:
+        lines = "\n".join(
+            f"- **{label}:** AQI {val:.1f} ({get_aqi_category(val)[0]})" for label, val in triggered
+        )
+        st.error(
+            f"🚨 **Hazardous Air Quality Alert**\n\n"
+            f"The following readings are at or above {HAZARDOUS_THRESHOLD} US-AQI "
+            f"(Very Unhealthy or worse):\n\n{lines}\n\n"
+            f"Limit outdoor exposure and consider wearing an N95 mask if you must go outside."
+        )
+
+
 # Header Section
 st.title("🌤️ Islamabad AQI Predictor")
 st.markdown("Real-time air quality forecasts for the next 72 hours powered by Machine Learning and Hopsworks Feature Store.")
@@ -46,89 +81,108 @@ st.divider()
 try:
     with st.spinner("Fetching latest feature vectors and generating predictions..."):
         predictions = run_inference()
-        
+
     current_aqi = predictions.get("current_aqi")
     forecast_24h = predictions.get("forecast_24h")
     forecast_48h = predictions.get("forecast_48h")
     forecast_72h = predictions.get("forecast_72h")
-    
+    model_version = predictions.get("model_version")
+
+    # Hazardous AQI alert banner — shown first so it's impossible to miss
+    render_hazard_alerts(current_aqi, forecast_24h, forecast_48h, forecast_72h)
+
     # AQI Health Status Cards
     st.subheader("Current Air Quality")
-    
+
     cat_name, cat_color, cat_desc = get_aqi_category(current_aqi)
-    
+
     col1, col2 = st.columns([1, 4])
     with col1:
         st.metric(
-            label="Current US-AQI", 
+            label="Current US-AQI",
             value=f"{current_aqi:.1f}" if current_aqi is not None else "N/A"
         )
     with col2:
         st.markdown(f"**Health Status:** <span style='color:{cat_color}; font-weight:bold; font-size: 1.1em;'>{cat_name}</span>", unsafe_allow_html=True)
         st.info(f"**Recommendation:** {cat_desc}")
-        
+
     st.divider()
-    
+
     # Forecast Trends Chart
     st.subheader("Forecast Trends (Next 72 Hours)")
-    
+
     time_labels = ["Current", "24 Hours", "48 Hours", "72 Hours"]
     aqi_values = [current_aqi, forecast_24h, forecast_48h, forecast_72h]
-    
+
     df_plot = pd.DataFrame({
         "Timeline": time_labels,
         "Predicted AQI": aqi_values
     })
-    
+
     fig = px.line(
-        df_plot, 
-        x="Timeline", 
-        y="Predicted AQI", 
+        df_plot,
+        x="Timeline",
+        y="Predicted AQI",
         markers=True,
         title="Air Quality Forecast",
         text=[f"{val:.1f}" if val is not None else "" for val in aqi_values]
     )
-    
+
     fig.update_traces(
-        textposition="top center", 
-        line=dict(width=4, color="#1f77b4"), 
+        textposition="top center",
+        line=dict(width=4, color="#1f77b4"),
         marker=dict(size=12, color="#1f77b4")
     )
-    
+
     # Warning threshold lines
     fig.add_hline(y=100, line_dash="dash", line_color="orange", annotation_text="Unhealthy for Sensitive Groups (>100)", annotation_position="top left")
     fig.add_hline(y=150, line_dash="dash", line_color="red", annotation_text="Unhealthy (>150)", annotation_position="top left")
-    
+    fig.add_hline(y=200, line_dash="dash", line_color="purple", annotation_text="Very Unhealthy (>200)", annotation_position="top left")
+
     fig.update_layout(
-        yaxis_title="US-AQI Value", 
+        yaxis_title="US-AQI Value",
         xaxis_title="Forecast Window",
-        yaxis=dict(range=[0, max([val for val in aqi_values if val is not None] + [160]) + 20])
+        yaxis=dict(range=[0, max([val for val in aqi_values if val is not None] + [200]) + 20])
     )
-    
+
     st.plotly_chart(fig, use_container_width=True)
-    
-    # Forecast Breakdown Table
+
+    # Forecast Breakdown Table (with per-horizon confidence)
     st.subheader("Detailed Forecast Breakdown")
-    
+
     breakdown_data = []
-    for label, val in zip(time_labels[1:], [forecast_24h, forecast_48h, forecast_72h]):
+    horizon_keys = ["24h", "48h", "72h"]
+    for label, key, val in zip(time_labels[1:], horizon_keys, [forecast_24h, forecast_48h, forecast_72h]):
         c_name, _, c_desc = get_aqi_category(val)
+        confidence = HORIZON_CONFIDENCE[key]
         breakdown_data.append({
             "Forecast Window": label,
             "Predicted US-AQI": round(val, 1) if val is not None else "N/A",
             "Category": c_name,
+            "Model Confidence": f"{confidence['label']} (R²≈{confidence['r2']:.2f})",
             "Recommendation": c_desc
         })
-        
+
     df_breakdown = pd.DataFrame(breakdown_data)
     st.dataframe(df_breakdown, use_container_width=True, hide_index=True)
-    
-    st.caption(f"Last updated: {predictions.get('execution_time')}")
+
+    st.caption(
+        "⚠️ Confidence estimates are based on historical model evaluation. "
+        "72-hour forecasts are meaningfully less reliable than 24-hour forecasts — "
+        "treat longer-horizon predictions as directional, not precise."
+    )
+
+    st.divider()
+    footer_col1, footer_col2 = st.columns(2)
+    with footer_col1:
+        st.caption(f"Last updated: {predictions.get('execution_time')}")
+    with footer_col2:
+        st.caption(f"Model version: {model_version if model_version is not None else 'N/A'}")
 
 except Exception as e:
     st.error("⚠️ Failed to load predictions or connect to Hopsworks.")
     st.exception(e)
-    
+
     st.markdown("""
     **Troubleshooting Steps:**
     1. Ensure `HOPSWORKS_API_KEY` is set correctly in your `.env` file.
