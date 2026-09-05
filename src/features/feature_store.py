@@ -1,14 +1,19 @@
 import hopsworks
 import pandas as pd
 from src.config import CONFIG, HOPSWORKS_API_KEY
-
+import os
+os.environ.setdefault("TMPDIR", "C:/tmp")
+os.makedirs("C:/tmp", exist_ok=True)
 def push_to_feature_store(df: pd.DataFrame) -> None:
     """Authenticates with Hopsworks and writes the engineered features into the Feature Store."""
     if not HOPSWORKS_API_KEY:
         raise ValueError("HOPSWORKS_API_KEY is missing from your environment or .env file.")
 
     # 1. Log in to Hopsworks Project
-    project = hopsworks.login(api_key_value=HOPSWORKS_API_KEY)
+    project = hopsworks.login(
+    api_key_value=HOPSWORKS_API_KEY,
+    project=CONFIG["feature_store"]["project_name"]
+)
     fs = project.get_feature_store()
 
     fg_name = CONFIG["feature_store"]["feature_group_name"]

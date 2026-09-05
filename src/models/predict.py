@@ -19,7 +19,9 @@ def get_latest_feature_vector():
         raise ValueError("HOPSWORKS_API_KEY is not set in the environment.")
 
     print("Connecting to Hopsworks Feature Store...")
-    project = hopsworks.login(api_key_value=HOPSWORKS_API_KEY)
+    project = hopsworks.login(
+    api_key_value=HOPSWORKS_API_KEY,
+    project=CONFIG["feature_store"]["project_name"])
     fs = project.get_feature_store()
 
     fg_name = CONFIG["feature_store"]["feature_group_name"]
@@ -56,7 +58,9 @@ def load_model_from_registry(model_name="islamabad_aqi_model_24h"):
         raise ValueError("HOPSWORKS_API_KEY is not set in the environment.")
 
     print(f"Connecting to Model Registry to fetch '{model_name}'...")
-    project = hopsworks.login(api_key_value=HOPSWORKS_API_KEY)
+    project = hopsworks.login(
+    api_key_value=HOPSWORKS_API_KEY,
+    project=CONFIG["feature_store"]["project_name"])
     mr = project.get_model_registry()
     
     model = mr.get_model(model_name)

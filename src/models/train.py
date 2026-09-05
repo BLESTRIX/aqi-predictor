@@ -15,7 +15,9 @@ def get_training_data():
     if not HOPSWORKS_API_KEY:
         raise ValueError("HOPSWORKS_API_KEY is not set.")
 
-    project = hopsworks.login(api_key_value=HOPSWORKS_API_KEY)
+    project = hopsworks.login(
+    api_key_value=HOPSWORKS_API_KEY,
+    project=CONFIG["feature_store"]["project_name"])
     fs = project.get_feature_store()
     
     fg_name = CONFIG["feature_store"]["feature_group_name"]

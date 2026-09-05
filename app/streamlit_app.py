@@ -4,11 +4,14 @@ import numpy as np
 from datetime import datetime, timedelta
 
 from src.config import settings
-from src.data.api_client import OpenMeteoAPIClient
+
 from src.features.build_features import engineer_all_features
 from src.models.registry import HopsworksModelRegistry
 from app.components.risk_indicators import get_aqi_category
 from app.components.plots import create_aqi_gauge, create_forecast_chart, create_pollutants_breakdown_chart
+from src.data.api_client import fetch_raw_air_quality
+from src.features.build_features import engineer_features
+
 
 # Page Configuration
 st.set_page_config(
@@ -21,12 +24,10 @@ st.set_page_config(
 
 @st.cache_data(ttl=1800)
 def load_live_data(lat: float, lon: float):
-    """Fetches and processes live air quality and weather data from Open-Meteo."""
-    client = OpenMeteoAPIClient(latitude=lat, longitude=lon)
-    df_raw = client.fetch_combined_data(past_days=3, forecast_days=2)
+    df_raw = fetch_raw_air_quality(lat=lat, lon=lon)
     if df_raw.empty:
         return pd.DataFrame()
-    df_feat = engineer_all_features(df_raw)
+    df_feat = engineer_features(df_raw)
     return df_feat
 
 

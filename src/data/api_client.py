@@ -71,18 +71,17 @@ def parse_aqicn_payload(payload: Dict[str, Any]) -> pd.DataFrame:
     return df.sort_values("time").reset_index(drop=True)
 
 
-def fetch_raw_air_quality() -> pd.DataFrame:
-    """Queries AQICN API endpoint for Islamabad using geo-coordinates."""
+def fetch_raw_air_quality(lat: float = None, lon: float = None) -> pd.DataFrame:
+    """Queries AQICN API endpoint using geo-coordinates."""
     if not AQICN_API_KEY:
         raise ValueError("AQICN_API_KEY is not set in environment or .env file.")
 
-    lat = CONFIG["location"]["latitude"]
-    lon = CONFIG["location"]["longitude"]
+    lat = lat or CONFIG["location"]["latitude"]
+    lon = lon or CONFIG["location"]["longitude"]
     url = f"{CONFIG['api']['base_url']}/geo:{lat};{lon}/?token={AQICN_API_KEY}"
 
     response = requests.get(url)
     response.raise_for_status()
-
     return parse_aqicn_payload(response.json())
 
 
