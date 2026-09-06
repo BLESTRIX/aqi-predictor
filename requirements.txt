@@ -1,3 +1,4 @@
+```pip requirements
 # ── Data Processing ──────────────────────────────────────────
 pandas>=2.2.0,<3.0.0
 numpy>=2.1.0,<2.3.0            # 2.1+ has cp313 wheels; no compilation needed
@@ -30,10 +31,17 @@ streamlit>=1.35.0,<2.0.0
 plotly>=5.20.0,<6.0.0
 
 # ── Explainability ───────────────────────────────────────────
-numba>=0.61.0,<0.62.0          # 0.61 = first release with cp313 wheels + numpy 2.x support
-shap>=0.46.0,<0.48.0           # 0.46+ targets numba 0.61+
+# NOTE: numba/shap require building llvmlite from source on some Python
+# versions (notably Python 3.14) which often fails in hosted/cloud
+# build environments because of missing toolchains or incompatible
+# build-time hooks. To avoid install-time failures for the Streamlit app
+# deployment, these are commented out here. If you need explainability
+# features locally or in CI with a proper build toolchain, uncomment
+# the two lines below or install them in an isolated environment.
+# numba>=0.61.0,<0.62.0          # 0.61 = first release with cp313 wheels + numpy 2.x support
+# shap>=0.46.0,<0.48.0           # 0.46+ targets numba 0.61+
 
-# ── Feature Store ────────────────────────────────────────────
+# ── Feature Store ───────────────────────────────────────────
 # NOTE: was previously two separate lines — "hopsworks==5.0.0" and
 # "hopsworks[python]>=5.0.0" further down. Two requirement lines for the same
 # package (one an exact pin, one a range, with the extra only on one of them)
@@ -45,3 +53,4 @@ hsml==3.7.*
 # ── Testing ──────────────────────────────────────────────────
 pytest>=8.0.0,<9.0.0
 pytest-cov>=5.0.0
+```
