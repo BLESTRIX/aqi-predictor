@@ -46,13 +46,17 @@ def parse_aqicn_payload(payload: Dict[str, Any]) -> pd.DataFrame:
     o3_map = {
         item["day"]: item["avg"] for item in daily_forecasts.get("o3", [])
     }
-    # Keep daily max alongside avg - avg alone smooths away spikes, which is
-    # exactly the failure mode that made the old Open-Meteo dataset look
-    # artificially "safe". Not consumed by build_features.py yet, but kept
-    # here so it's available if you want a pm25_daily_max feature later.
-    pm25_max_map = {
-        item["day"]: item.get("max", item.get("avg", 0.0)) for item in pm25_list
-    }
+    # NOTE: AQICN's forecast payload also carries a daily "max" alongside "avg"
+    # for pm25, which would be useful for a future pm25_daily_max feature.
+    # It is intentionally NOT added to forecast_rows below: the Hopsworks
+    # feature group schema (islamabad_aqi_features v2) was created from
+    # backfill.py's historical loader, which never produced this column, so
+    # inserting it here causes a hard schema-mismatch error at push time
+    # ("Features are not compatible with Feature Group schema"). To add this
+    # feature properly: (1) add it to build_features.py so backfill.py also
+    # produces it, (2) bump feature_group_version in config.yaml so Hopsworks
+    # creates a new group with the extra column, (3) re-backfill history,
+    # then re-add pm2_5_max here.
 
     forecast_rows = []
     for item in pm25_list:
@@ -61,7 +65,6 @@ def parse_aqicn_payload(payload: Dict[str, Any]) -> pd.DataFrame:
             "time": pd.to_datetime(day_str),
             "us_aqi": float(item.get("avg", 0.0)),
             "pm2_5": float(item.get("avg", 0.0)),
-            "pm2_5_max": float(pm25_max_map.get(day_str, 0.0)),
             "pm10": float(pm10_map.get(day_str, 0.0)),
             "nitrogen_dioxide": 0.0,
             "sulphur_dioxide": 0.0,

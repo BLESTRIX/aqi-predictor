@@ -2,7 +2,7 @@ import os
 import glob
 import joblib
 import hopsworks
-from src.config import HOPSWORKS_API_KEY,CONFIG
+from src.config import HOPSWORKS_API_KEY, CONFIG
 from src.utils.logger import logger
 
 
@@ -22,7 +22,16 @@ class HopsworksModelRegistry:
         if self._mr is None:
             if not HOPSWORKS_API_KEY:
                 raise ValueError("HOPSWORKS_API_KEY is not set.")
-            self.project = hopsworks.login(api_key_value=HOPSWORKS_API_KEY,project=CONFIG["feature_store"]["project_name"])
+            # FIX: previously assigned to `self.project` (no underscore) but
+            # read from `self._project` below, so `self._project` stayed None
+            # forever and this raised AttributeError on every call, silently
+            # swallowed by load_latest_model()'s try/except — meaning the
+            # dashboard was always serving the local fallback model, never
+            # the actual latest model from the Hopsworks registry.
+            self._project = hopsworks.login(
+                api_key_value=HOPSWORKS_API_KEY,
+                project=CONFIG["feature_store"]["project_name"],
+            )
             self._mr = self._project.get_model_registry()
 
     def load_latest_model(self):
@@ -80,7 +89,6 @@ def upload_model(model, model_name: str, metrics: dict, description: str):
     if os.path.exists(local_dir):
         shutil.rmtree(local_dir)
     os.makedirs(local_dir, exist_ok=True)
-    os.makedirs(local_dir, exist_ok=True)
     model_path = os.path.join(local_dir, "model.pkl")
     joblib.dump(model, model_path)
     logger.info(f"Model saved locally to {model_path}")
@@ -89,7 +97,7 @@ def upload_model(model, model_name: str, metrics: dict, description: str):
     project = hopsworks.login(
         api_key_value=HOPSWORKS_API_KEY,
         project=CONFIG["feature_store"]["project_name"])
-    mr = project.get_model_registry()          # ← add this line
+    mr = project.get_model_registry()
 
     logger.info(f"Uploading model '{model_name}' to registry...")
     hs_model = mr.python.create_model(
@@ -100,14 +108,15 @@ def upload_model(model, model_name: str, metrics: dict, description: str):
     hs_model.save(local_dir)
     logger.info(f"Model '{model_name}' successfully registered!")
 
+
 def download_model(model_name: str, version: int = None):
     """Downloads a specific model version from the registry."""
     if not HOPSWORKS_API_KEY:
         raise ValueError("HOPSWORKS_API_KEY is not set.")
 
     project = hopsworks.login(
-    api_key_value=HOPSWORKS_API_KEY,
-    project=CONFIG["feature_store"]["project_name"])
+        api_key_value=HOPSWORKS_API_KEY,
+        project=CONFIG["feature_store"]["project_name"])
     mr = project.get_model_registry()
 
     model = mr.get_model(model_name, version=version) if version else mr.get_model(model_name)

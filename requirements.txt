@@ -6,6 +6,16 @@ numpy>=2.1.0,<2.3.0            # 2.1+ has cp313 wheels; no compilation needed
 scikit-learn>=1.5.0,<1.7.0
 xgboost>=2.1.0,<3.0.0
 
+# ── Time-Series / Model Comparison Notebook ─────────────────
+# Used by notebooks/AQI_Model_Comparison.ipynb (SARIMA + comparison plots).
+# Not imported by any src/ or app/ code — kept separate from the production
+# model path in train.py, see the comment block at the top of train.py for
+# why SARIMA itself isn't a deployable candidate.
+statsmodels>=0.14.4,<0.15.0    # 0.14.4+ has numpy 2.x wheels
+scipy>=1.13.0,<1.15.0          # peak-lag cross-correlation (scipy.signal.correlate)
+matplotlib>=3.9.0,<4.0.0
+seaborn>=0.13.0,<0.14.0
+
 # ── HTTP & Config ────────────────────────────────────────────
 requests>=2.31.0,<3.0.0
 pyyaml>=6.0.1,<7.0.0
@@ -24,9 +34,14 @@ numba>=0.61.0,<0.62.0          # 0.61 = first release with cp313 wheels + numpy 
 shap>=0.46.0,<0.48.0           # 0.46+ targets numba 0.61+
 
 # ── Feature Store ────────────────────────────────────────────
-hopsworks==5.0.0        # 4.6+ is numpy 2.x compatible
+# NOTE: was previously two separate lines — "hopsworks==5.0.0" and
+# "hopsworks[python]>=5.0.0" further down. Two requirement lines for the same
+# package (one an exact pin, one a range, with the extra only on one of them)
+# is ambiguous for pip's resolver and easy to accidentally make unsatisfiable
+# on a future edit. Consolidated into a single line below.
+hopsworks[python]==5.0.0       # 4.6+ is numpy 2.x compatible
 hsml==3.7.*
+
 # ── Testing ──────────────────────────────────────────────────
 pytest>=8.0.0,<9.0.0
 pytest-cov>=5.0.0
-hopsworks[python]>=5.0.0

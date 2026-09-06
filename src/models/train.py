@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import Ridge
+from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.multioutput import MultiOutputRegressor
 from xgboost import XGBRegressor
@@ -20,6 +21,34 @@ from sklearn.preprocessing import StandardScaler
 # noise, so they're excluded from the model's feature set.
 DEAD_COLS = ["pm2_5","pm10", "nitrogen_dioxide", "sulphur_dioxide", "carbon_monoxide",
              "ozone", "temperature", "humidity", "pressure", "wind_speed"]
+
+# ── Model comparison context (see notebooks/AQI_Model_Comparison.ipynb) ─────
+#
+# That notebook trained Persistence, Ridge, RandomForest, XGBoost, MLP, and
+# SARIMA on the same v2 data/split used here and scored actual vs. predicted
+# curves, tail-focused MAE (>150 AQI), and peak-lag — not just RMSE/MAE/R².
+# Two results from that comparison are reflected below:
+#
+# 1. Ridge won on R² at every horizon (24h/48h/72h) — RandomForest and
+#    XGBoost were consistently NOT the best performers on this dataset.
+#    Nothing is hardcoded to "pick Ridge" here; the existing max-R² selection
+#    logic already surfaces it correctly, we just now log it explicitly so
+#    that stops being a surprise if it changes on a future retrain.
+# 2. MLPRegressor (a genuinely different model family — neural net vs.
+#    trees/linear) was competitive, beating both RandomForest and XGBoost at
+#    the 48h/72h horizons in the notebook, so it's added below as a fourth
+#    real candidate.
+#
+# SARIMA was also evaluated in the notebook (it did not win any horizon) but
+# is intentionally NOT added as a production candidate here: this repo's
+# serving path (src/models/predict.py) calls `model.predict(feature_vector)`
+# on a single-row DataFrame, and SHAP explanations (src/models/evaluate.py)
+# require `.estimators_` on a MultiOutputRegressor. SARIMA instead requires
+# walk-forward sequential fitting against the full time series and produces
+# forecasts very differently — it cannot be dropped into that contract
+# without a separate inference path. If SARIMA (or another sequence model)
+# is ever wanted in production, it needs its own serving code, not a slot in
+# this candidates dict.
 
 
 def get_training_data():
@@ -50,6 +79,18 @@ def evaluate_per_horizon(y_test: pd.DataFrame, y_pred: np.ndarray, target_cols: 
         per_horizon[col] = m
         logger.info(f"[{model_label}] {col}: RMSE={m['rmse']:.2f}  MAE={m['mae']:.2f}  R2={m['r2_score']:.3f}")
     return per_horizon
+
+
+def compute_persistence_baseline(X_test: pd.DataFrame, y_test: pd.DataFrame, target_cols: list) -> dict:
+    """
+    'Tomorrow's AQI = today's AQI', evaluated on the same test split as every
+    trained candidate. Not a deployable model — used purely as a sanity floor.
+    Per the comparison notebook, this is a genuinely strong competitor at 24h,
+    so any trained model that can't clearly beat it isn't earning its
+    complexity, especially at longer horizons.
+    """
+    persistence_pred = np.repeat(X_test["us_aqi"].values.reshape(-1, 1), len(target_cols), axis=1)
+    return evaluate_per_horizon(y_test, persistence_pred, target_cols, "Persistence (baseline)")
 
 
 def train_and_score(model, model_label, X_train, y_train, X_test, y_test, target_cols):
@@ -93,6 +134,9 @@ def train_model():
     # Chronological train-test split (identical split reused across all models)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
 
+    # ── Persistence baseline (logged, not a candidate for deployment) ──────
+    persistence_metrics = compute_persistence_baseline(X_test, y_test, target_cols)
+
     candidates = {}
 
     # ── Model 1: Random Forest ────────────────────────────────────────────
@@ -125,19 +169,63 @@ def train_model():
         ridge_model, "Ridge", X_train, y_train, X_test, y_test, target_cols
     )
 
+    # ── Model 4: MLP (neural network) ─────────────────────────────────────
+    # Added per the model-comparison notebook: a genuinely different model
+    # family from trees/linear regression, and competitive with RF/XGBoost
+    # at the 48h/72h horizons there. Wrapped in the same
+    # StandardScaler-then-model pipeline pattern as Ridge, since MLP is
+    # scale-sensitive.
+    mlp_base = MLPRegressor(
+        hidden_layer_sizes=(32, 16),
+        activation="relu",
+        max_iter=3000,
+        random_state=42,
+        early_stopping=True,
+    )
+    mlp_pipeline = make_pipeline(StandardScaler(), mlp_base)
+    mlp_model = MultiOutputRegressor(mlp_pipeline)
+
+    candidates["MLP"] = train_and_score(
+        mlp_model, "MLP", X_train, y_train, X_test, y_test, target_cols
+    )
+
     # ── Model selection: pick the best by overall R² ─────────────────────
     best_name = max(candidates, key=lambda name: candidates[name][1]["r2_score"])
     best_model, best_metrics = candidates[best_name]
 
     logger.info("── Model comparison summary ──")
+    logger.info(
+        f"Persistence (baseline, not deployable): "
+        f"{ {h: round(m['r2_score'], 3) for h, m in persistence_metrics.items()} }"
+    )
     for name, (_, metrics) in candidates.items():
         logger.info(f"{name}: R2={metrics['r2_score']:.3f}  RMSE={metrics['rmse']:.2f}  MAE={metrics['mae']:.2f}")
 
     logger.info(f"Selected best model: {best_name} (R2={best_metrics['r2_score']:.3f})")
 
+    # Sanity check against the persistence baseline, per-horizon. This won't
+    # block an upload (a slightly-worse-than-persistence model may still be
+    # the least-bad option available), but it should never pass silently.
+    persistence_overall_r2 = np.mean([m["r2_score"] for m in persistence_metrics.values()])
+    best_overall_per_horizon_r2 = np.mean([m["r2_score"] for m in
+                                            evaluate_per_horizon(y_test, best_model.predict(X_test), target_cols, best_name).values()])
+    if best_overall_per_horizon_r2 <= persistence_overall_r2:
+        logger.warning(
+            f"Selected model '{best_name}' (avg per-horizon R2={best_overall_per_horizon_r2:.3f}) "
+            f"does NOT clearly beat the naive persistence baseline "
+            f"(avg per-horizon R2={persistence_overall_r2:.3f}). Consider investigating "
+            f"before relying on this forecast in production."
+        )
+
     # Upload to registry
     model_name = "islamabad_aqi_model_24h"
-    description = f"{best_name} predicting 24h, 48h, and 72h AQI (v2: AQICN daily PM2.5). Compared against RandomForest, XGBoost, and Ridge."
+    description = (
+        f"{best_name} predicting 24h, 48h, and 72h AQI (v2: AQICN daily PM2.5). "
+        f"Compared against RandomForest, XGBoost, Ridge, MLP, and a naive "
+        f"persistence baseline (see notebooks/AQI_Model_Comparison.ipynb; "
+        f"SARIMA was also evaluated there but is not a production candidate "
+        f"due to incompatible serving architecture)."
+    )
     upload_model(best_model, model_name, best_metrics, description)
 
 
