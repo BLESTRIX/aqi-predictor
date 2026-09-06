@@ -53,3 +53,27 @@ def test_push_to_feature_store_uses_configured_feature_group_name(mock_login):
     _, kwargs = mock_fs.get_or_create_feature_group.call_args
     assert kwargs["name"] == "islamabad_aqi_features"
     assert kwargs["primary_key"] == ["location", "event_timestamp"]
+
+
+@patch("src.features.feature_store.HOPSWORKS_API_KEY", "fake_key")
+@patch("src.features.feature_store.hopsworks.login")
+def test_push_to_feature_store_skips_mock_schema_validation(mock_login):
+    mock_project = MagicMock()
+    mock_fs = MagicMock()
+    mock_fg = MagicMock()
+    mock_fg.features = MagicMock()
+
+    mock_login.return_value = mock_project
+    mock_project.get_feature_store.return_value = mock_fs
+    mock_fs.get_or_create_feature_group.return_value = mock_fg
+
+    df = pd.DataFrame({
+        "time": pd.date_range("2026-01-01", periods=2),
+        "location": ["islamabad", "islamabad"],
+        "event_timestamp": [1, 2],
+        "us_aqi": [55, 65],
+    })
+
+    push_to_feature_store(df)
+
+    mock_fg.insert.assert_called_once_with(df, write_options={"wait_for_job": True})
