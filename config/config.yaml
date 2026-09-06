@@ -6,11 +6,12 @@ location:
 api:
   provider: "aqicn"
   base_url: "https://api.waqi.info/feed"
+  station_path: "pakistan/islamabad/us-embassy"
 
 feature_store:
   project_name: "pakistan_aqi_predictor"
   feature_group_name: "islamabad_aqi_features"
-  feature_group_version: 1
+  feature_group_version: 2
 
 model:
   target_columns:

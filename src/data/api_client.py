@@ -46,6 +46,13 @@ def parse_aqicn_payload(payload: Dict[str, Any]) -> pd.DataFrame:
     o3_map = {
         item["day"]: item["avg"] for item in daily_forecasts.get("o3", [])
     }
+    # Keep daily max alongside avg - avg alone smooths away spikes, which is
+    # exactly the failure mode that made the old Open-Meteo dataset look
+    # artificially "safe". Not consumed by build_features.py yet, but kept
+    # here so it's available if you want a pm25_daily_max feature later.
+    pm25_max_map = {
+        item["day"]: item.get("max", item.get("avg", 0.0)) for item in pm25_list
+    }
 
     forecast_rows = []
     for item in pm25_list:
@@ -54,6 +61,7 @@ def parse_aqicn_payload(payload: Dict[str, Any]) -> pd.DataFrame:
             "time": pd.to_datetime(day_str),
             "us_aqi": float(item.get("avg", 0.0)),
             "pm2_5": float(item.get("avg", 0.0)),
+            "pm2_5_max": float(pm25_max_map.get(day_str, 0.0)),
             "pm10": float(pm10_map.get(day_str, 0.0)),
             "nitrogen_dioxide": 0.0,
             "sulphur_dioxide": 0.0,
@@ -71,14 +79,21 @@ def parse_aqicn_payload(payload: Dict[str, Any]) -> pd.DataFrame:
     return df.sort_values("time").reset_index(drop=True)
 
 
-def fetch_raw_air_quality(lat: float = None, lon: float = None) -> pd.DataFrame:
-    """Queries AQICN API endpoint using geo-coordinates."""
+def fetch_raw_air_quality(station: str = None, lat: float = None, lon: float = None) -> pd.DataFrame:
+    """
+    Queries the AQICN API. Defaults to the pinned station (config.api.station_path)
+    so live fetches hit the SAME physical sensor as the historical training data
+    (Islamabad US Embassy). Falls back to geo-coordinates only if explicitly passed.
+    """
     if not AQICN_API_KEY:
         raise ValueError("AQICN_API_KEY is not set in environment or .env file.")
 
-    lat = lat or CONFIG["location"]["latitude"]
-    lon = lon or CONFIG["location"]["longitude"]
-    url = f"{CONFIG['api']['base_url']}/geo:{lat};{lon}/?token={AQICN_API_KEY}"
+    if lat is not None and lon is not None:
+        path = f"geo:{lat};{lon}"
+    else:
+        path = station or CONFIG["api"].get("station_path", "pakistan/islamabad/us-embassy")
+
+    url = f"{CONFIG['api']['base_url']}/{path}/?token={AQICN_API_KEY}"
 
     response = requests.get(url)
     response.raise_for_status()

@@ -14,6 +14,14 @@ from src.models.registry import upload_model
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+# v2 feature group (AQICN, PM2.5-only) carries these columns as constant 0.0
+# placeholders inherited from the old multi-pollutant/weather schema. They add
+# no signal and can pick up spurious SHAP "importance" from floating point
+# noise, so they're excluded from the model's feature set.
+DEAD_COLS = ["pm2_5","pm10", "nitrogen_dioxide", "sulphur_dioxide", "carbon_monoxide",
+             "ozone", "temperature", "humidity", "pressure", "wind_speed"]
+
+
 def get_training_data():
     """Fetches historical data directly from the Hopsworks feature group."""
     if not HOPSWORKS_API_KEY:
@@ -66,9 +74,12 @@ def train_model():
     # Identify target columns
     target_cols = [c for c in df.columns if c.startswith("target_")]
 
-    # The feature columns are everything except target cols and metadata
+    # The feature columns are everything except targets, metadata, and dead columns
     metadata_cols = ["time", "location", "event_timestamp", "record_type"]
-    feature_cols = [c for c in df.columns if c not in target_cols and c not in metadata_cols]
+    feature_cols = [
+        c for c in df.columns
+        if c not in target_cols and c not in metadata_cols and c not in DEAD_COLS
+    ]
 
     # Drop rows where target variables are NaN (future dates)
     df_clean = df.dropna(subset=target_cols).copy()
@@ -77,6 +88,7 @@ def train_model():
     y = df_clean[target_cols]
 
     logger.info(f"Training data shape: {X.shape}")
+    logger.info(f"Feature columns: {feature_cols}")
 
     # Chronological train-test split (identical split reused across all models)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
@@ -105,7 +117,7 @@ def train_model():
         xgb_model, "XGBoost", X_train, y_train, X_test, y_test, target_cols
     )
 
-    # ── Model 3: Ridge Regression (statistical baseline) ─────────────────s
+    # ── Model 3: Ridge Regression (statistical baseline) ─────────────────
     ridge_pipeline = make_pipeline(StandardScaler(), Ridge(alpha=1.0, random_state=42))
     ridge_model = MultiOutputRegressor(ridge_pipeline)
 
@@ -125,7 +137,7 @@ def train_model():
 
     # Upload to registry
     model_name = "islamabad_aqi_model_24h"
-    description = f"{best_name} predicting 24h, 48h, and 72h AQI. Compared against RandomForest, XGBoost, and Ridge."
+    description = f"{best_name} predicting 24h, 48h, and 72h AQI (v2: AQICN daily PM2.5). Compared against RandomForest, XGBoost, and Ridge."
     upload_model(best_model, model_name, best_metrics, description)
 
 

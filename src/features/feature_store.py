@@ -29,7 +29,7 @@ def push_to_feature_store(df: pd.DataFrame) -> None:
     )
 
     # 3. Upload feature data frame
-    aqi_fg.insert(df, write_options={"wait_for_job": False})
+    aqi_fg.insert(df, write_options={"wait_for_job": True})
     print(f"Successfully inserted {len(df)} records into Feature Group '{fg_name}' (v{fg_version}).")
 
 if __name__ == "__main__":

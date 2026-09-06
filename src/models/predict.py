@@ -7,6 +7,12 @@ import hopsworks
 
 from src.config import CONFIG, HOPSWORKS_API_KEY
 
+# Must match src/models/train.py's DEAD_COLS exactly, or the feature vector
+# handed to the model at inference time will have different columns than
+# what it was fit on, and sklearn/XGBoost will raise a shape/column mismatch.
+DEAD_COLS = ["pm2_5","pm10", "nitrogen_dioxide", "sulphur_dioxide", "carbon_monoxide",
+             "ozone", "temperature", "humidity", "pressure", "wind_speed"]
+
 
 def get_latest_feature_vector():
     """
@@ -41,11 +47,12 @@ def get_latest_feature_vector():
 
     metadata_cols = ["time", "location", "event_timestamp", "record_type"]
     target_cols = [col for col in latest_row.columns if col.startswith("target_")]
-    cols_to_drop = metadata_cols + target_cols
+    cols_to_drop = metadata_cols + target_cols + DEAD_COLS
 
     feature_vector = latest_row.drop(columns=cols_to_drop, errors="ignore")
 
     return feature_vector, current_aqi
+
 
 def load_model_from_registry(model_name="islamabad_aqi_model_24h"):
     """
@@ -61,9 +68,6 @@ def load_model_from_registry(model_name="islamabad_aqi_model_24h"):
         project=CONFIG["feature_store"]["project_name"])
     mr = project.get_model_registry()
 
-    # Get ALL versions of this model, then pick the highest version number.
-    # get_model(name) with no version silently defaults to version 1,
-    # which is stale once you've retrained multiple times.
     all_versions = mr.get_models(name=model_name)
     if not all_versions:
         raise ValueError(f"No versions of model '{model_name}' found in registry.")
@@ -74,8 +78,6 @@ def load_model_from_registry(model_name="islamabad_aqi_model_24h"):
     model = mr.get_model(model_name, version=latest_model_meta.version)
 
     print("Downloading model artifact (using Hopsworks' managed cache)...")
-    # local_path=None lets hsml manage its own cache dir, keyed by model id/version,
-    # so re-downloads are idempotent and we avoid manual overwrite/cleanup logic.
     model_path = model.download()
 
     pkl_path = os.path.join(model_path, "model.pkl")
@@ -90,6 +92,8 @@ def load_model_from_registry(model_name="islamabad_aqi_model_24h"):
     loaded_model = joblib.load(pkl_path)
 
     return loaded_model, latest_model_meta.version
+
+
 def get_background_sample(n: int = 100) -> pd.DataFrame:
     """
     Fetches a sample of recent historical feature rows to use as the SHAP
@@ -110,7 +114,7 @@ def get_background_sample(n: int = 100) -> pd.DataFrame:
 
     metadata_cols = ["time", "location", "event_timestamp", "record_type"]
     target_cols = [col for col in df.columns if col.startswith("target_")]
-    cols_to_drop = metadata_cols + target_cols
+    cols_to_drop = metadata_cols + target_cols + DEAD_COLS
 
     return df.drop(columns=cols_to_drop, errors="ignore")
 
