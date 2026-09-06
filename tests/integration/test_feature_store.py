@@ -21,6 +21,7 @@ def test_push_to_feature_store_calls_insert(mock_login):
     mock_login.return_value = mock_project
     mock_project.get_feature_store.return_value = mock_fs
     mock_fs.get_or_create_feature_group.return_value = mock_fg
+    mock_fg.features = []
 
     df = pd.DataFrame({
         "time": pd.date_range("2026-01-01", periods=3),
@@ -46,6 +47,7 @@ def test_push_to_feature_store_uses_configured_feature_group_name(mock_login):
     mock_login.return_value = mock_project
     mock_project.get_feature_store.return_value = mock_fs
     mock_fs.get_or_create_feature_group.return_value = mock_fg
+    mock_fg.features = []
 
     df = pd.DataFrame({"time": pd.date_range("2026-01-01", periods=2), "us_aqi": [1, 2]})
     push_to_feature_store(df)

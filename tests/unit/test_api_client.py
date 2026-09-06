@@ -25,7 +25,7 @@ def _fake_aqicn_payload():
             },
             "forecast": {
                 "daily": {
-                    "pm25": [{"day": "2026-01-02", "avg": 60.0}],
+                    "pm25": [{"day": "2026-01-02", "avg": 60.0, "max": 120.0}],
                     "pm10": [{"day": "2026-01-02", "avg": 85.0}],
                     "o3": [{"day": "2026-01-02", "avg": 33.0}],
                 }
@@ -41,6 +41,7 @@ def test_parse_aqicn_payload_returns_dataframe():
     assert "us_aqi" in df.columns
     assert "pm2_5" in df.columns
     assert "record_type" in df.columns
+    assert "pm2_5_max" not in df.columns
     # 1 realtime row + 1 forecast row
     assert len(df) == 2
 
