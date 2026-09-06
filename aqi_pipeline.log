@@ -157,3 +157,44 @@
 2026-09-06 04:45:27,038 - aqi_predictor - INFO - Model 'islamabad_aqi_model_24h' successfully registered!
 2026-09-06 04:45:27,044 - hopsworks_common.client.external - INFO - Closing external client and cleaning up certificates.
 2026-09-06 04:45:27,045 - hopsworks_common.connection - INFO - Connection closed.
+2026-09-06 05:46:15,203 - hopsworks_common.client.external - INFO - Closing external client and cleaning up certificates.
+2026-09-06 05:46:15,208 - hopsworks_common.connection - INFO - Connection closed.
+2026-09-06 05:46:15,211 - hopsworks_common.client.external - INFO - Initializing external client
+2026-09-06 05:46:15,212 - hopsworks_common.client.external - INFO - Base URL: https://eu-west.cloud.hopsworks.ai:443
+2026-09-06 05:46:17,631 - hsfs.engine.python - INFO - Python Engine initialized.
+2026-09-06 05:46:26,799 - aqi_predictor - WARNING - SHAP explanation failed for target_aqi_24h: The passed model is not callable and cannot be analyzed directly with the given masker! Model: Pipeline(steps=[('standardscaler', StandardScaler()),
+                ('ridge', Ridge(random_state=42))])
+2026-09-06 05:46:26,802 - aqi_predictor - WARNING - SHAP explanation failed for target_aqi_48h: The passed model is not callable and cannot be analyzed directly with the given masker! Model: Pipeline(steps=[('standardscaler', StandardScaler()),
+                ('ridge', Ridge(random_state=42))])
+2026-09-06 05:46:26,804 - aqi_predictor - WARNING - SHAP explanation failed for target_aqi_72h: The passed model is not callable and cannot be analyzed directly with the given masker! Model: Pipeline(steps=[('standardscaler', StandardScaler()),
+                ('ridge', Ridge(random_state=42))])
+2026-09-06 05:49:07,887 - hopsworks_common.client.external - INFO - Closing external client and cleaning up certificates.
+2026-09-06 05:49:07,895 - hopsworks_common.connection - INFO - Connection closed.
+2026-09-06 05:49:07,908 - hopsworks_common.client.external - INFO - Initializing external client
+2026-09-06 05:49:07,909 - hopsworks_common.client.external - INFO - Base URL: https://eu-west.cloud.hopsworks.ai:443
+2026-09-06 05:49:10,407 - hsfs.engine.python - INFO - Python Engine initialized.
+2026-09-06 05:49:20,327 - hopsworks_common.client.external - INFO - Closing external client and cleaning up certificates.
+2026-09-06 05:49:20,330 - hopsworks_common.connection - INFO - Connection closed.
+2026-09-06 05:49:20,332 - hopsworks_common.client.external - INFO - Initializing external client
+2026-09-06 05:49:20,332 - hopsworks_common.client.external - INFO - Base URL: https://eu-west.cloud.hopsworks.ai:443
+2026-09-06 05:49:23,549 - hsfs.engine.python - INFO - Python Engine initialized.
+2026-09-06 05:49:31,049 - hopsworks_common.client.external - INFO - Closing external client and cleaning up certificates.
+2026-09-06 05:49:31,050 - hopsworks_common.connection - INFO - Connection closed.
+2026-09-06 05:49:31,051 - hopsworks_common.client.external - INFO - Initializing external client
+2026-09-06 05:49:31,051 - hopsworks_common.client.external - INFO - Base URL: https://eu-west.cloud.hopsworks.ai:443
+2026-09-06 05:49:33,910 - hsfs.engine.python - INFO - Python Engine initialized.
+2026-09-06 05:49:43,549 - aqi_predictor - WARNING - SHAP explanation failed for target_aqi_24h: The passed model is not callable and cannot be analyzed directly with the given masker! Model: Pipeline(steps=[('standardscaler', StandardScaler()),
+                ('ridge', Ridge(random_state=42))])
+2026-09-06 05:49:43,551 - aqi_predictor - WARNING - SHAP explanation failed for target_aqi_48h: The passed model is not callable and cannot be analyzed directly with the given masker! Model: Pipeline(steps=[('standardscaler', StandardScaler()),
+                ('ridge', Ridge(random_state=42))])
+2026-09-06 05:49:43,553 - aqi_predictor - WARNING - SHAP explanation failed for target_aqi_72h: The passed model is not callable and cannot be analyzed directly with the given masker! Model: Pipeline(steps=[('standardscaler', StandardScaler()),
+                ('ridge', Ridge(random_state=42))])
+2026-09-06 05:49:54,379 - hopsworks_common.client.external - INFO - Closing external client and cleaning up certificates.
+2026-09-06 05:49:54,379 - hopsworks_common.connection - INFO - Connection closed.
+2026-09-06 05:54:25,666 - hopsworks_common.client.external - INFO - Closing external client and cleaning up certificates.
+2026-09-06 05:54:25,667 - hopsworks_common.connection - INFO - Connection closed.
+2026-09-06 05:54:25,667 - hopsworks_common.client.external - INFO - Initializing external client
+2026-09-06 05:54:25,667 - hopsworks_common.client.external - INFO - Base URL: https://eu-west.cloud.hopsworks.ai:443
+2026-09-06 05:54:28,983 - hsfs.engine.python - INFO - Python Engine initialized.
+2026-09-06 06:14:28,659 - hopsworks_common.client.external - INFO - Closing external client and cleaning up certificates.
+2026-09-06 06:14:28,662 - hopsworks_common.connection - INFO - Connection closed.

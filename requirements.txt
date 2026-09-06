@@ -25,7 +25,7 @@ shap>=0.46.0,<0.48.0           # 0.46+ targets numba 0.61+
 
 # ── Feature Store ────────────────────────────────────────────
 hopsworks==5.0.0        # 4.6+ is numpy 2.x compatible
-
+hsml==3.7.*
 # ── Testing ──────────────────────────────────────────────────
 pytest>=8.0.0,<9.0.0
 pytest-cov>=5.0.0

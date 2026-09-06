@@ -30,7 +30,7 @@ def get_latest_feature_vector():
     print(f"Fetching feature group '{fg_name}' (version {fg_version})...")
     fg = fs.get_feature_group(name=fg_name, version=fg_version)
 
-    df = fg.read()
+    df = fg.read(read_options={"use_hive": False})
     if df.empty:
         raise ValueError(f"Feature group {fg_name} is empty.")
 
@@ -90,22 +90,56 @@ def load_model_from_registry(model_name="islamabad_aqi_model_24h"):
     loaded_model = joblib.load(pkl_path)
 
     return loaded_model, latest_model_meta.version
+def get_background_sample(n: int = 100) -> pd.DataFrame:
+    """
+    Fetches a sample of recent historical feature rows to use as the SHAP
+    explainer's reference distribution. Uses the same column filtering as
+    get_latest_feature_vector() so columns line up with what the model expects.
+    """
+    project = hopsworks.login(
+        api_key_value=HOPSWORKS_API_KEY,
+        project=CONFIG["feature_store"]["project_name"])
+    fs = project.get_feature_store()
+
+    fg_name = CONFIG["feature_store"]["feature_group_name"]
+    fg_version = CONFIG["feature_store"]["feature_group_version"]
+    fg = fs.get_feature_group(name=fg_name, version=fg_version)
+
+    df = fg.read(read_options={"use_hive": False})
+    df = df.sort_values(by="time", ascending=True).tail(n).copy()
+
+    metadata_cols = ["time", "location", "event_timestamp", "record_type"]
+    target_cols = [col for col in df.columns if col.startswith("target_")]
+    cols_to_drop = metadata_cols + target_cols
+
+    return df.drop(columns=cols_to_drop, errors="ignore")
+
+
 def run_inference():
     """
-    Fetch the latest features, load the latest model, and generate 24h, 48h, 72h forecasts.
+    Fetch the latest features, load the latest model, generate 24h/48h/72h
+    forecasts, and compute SHAP explanations for each horizon.
     """
     feature_vector, current_aqi = get_latest_feature_vector()
-
     model, model_version = load_model_from_registry()
 
     print("Running inference...")
     predictions = model.predict(feature_vector)
-
     preds = predictions[0] if len(predictions.shape) > 1 else predictions
 
     pred_24h = float(preds[0]) if len(preds) > 0 else None
     pred_48h = float(preds[1]) if len(preds) > 1 else None
     pred_72h = float(preds[2]) if len(preds) > 2 else None
+
+    # SHAP explanations — best-effort; failures here shouldn't break the forecast
+    shap_explanations = {}
+    try:
+        from src.models.evaluate import explain_forecast
+        background_df = get_background_sample(n=100)
+        target_cols = CONFIG["model"]["target_columns"]
+        shap_explanations = explain_forecast(model, feature_vector, background_df, target_cols)
+    except Exception as e:
+        print(f"[WARN] SHAP explanation skipped: {e}")
 
     current_timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -115,7 +149,8 @@ def run_inference():
         "current_aqi": float(current_aqi),
         "forecast_24h": pred_24h,
         "forecast_48h": pred_48h,
-        "forecast_72h": pred_72h
+        "forecast_72h": pred_72h,
+        "shap_explanations": shap_explanations,
     }
 
     return result

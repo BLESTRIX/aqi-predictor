@@ -162,6 +162,48 @@ try:
             "Model Confidence": f"{confidence['label']} (R²≈{confidence['r2']:.2f})",
             "Recommendation": c_desc
         })
+        st.divider()
+    st.subheader("🔍 Why This Forecast (Feature Importance)")
+
+    shap_explanations = predictions.get("shap_explanations", {})
+    horizon_map = {
+        "target_aqi_24h": "24 Hours",
+        "target_aqi_48h": "48 Hours",
+        "target_aqi_72h": "72 Hours",
+    }
+
+    if not shap_explanations or all(not v for v in shap_explanations.values()):
+        st.info("Feature importance data is unavailable for this forecast.")
+    else:
+        tabs = st.tabs([horizon_map.get(k, k) for k in shap_explanations.keys()])
+        for tab, (horizon_key, contributions) in zip(tabs, shap_explanations.items()):
+            with tab:
+                if not contributions:
+                    st.write("No explanation available for this horizon.")
+                    continue
+
+                shap_df = pd.DataFrame(contributions)
+                shap_df["direction"] = shap_df["shap_value"].apply(
+                    lambda v: "Increases AQI" if v > 0 else "Decreases AQI"
+                )
+                shap_df["abs_value"] = shap_df["shap_value"].abs()
+
+                fig_shap = px.bar(
+                    shap_df.sort_values("abs_value"),
+                    x="shap_value",
+                    y="feature",
+                    orientation="h",
+                    color="direction",
+                    color_discrete_map={"Increases AQI": "#d62728", "Decreases AQI": "#2ca02c"},
+                    title=f"Top factors influencing the {horizon_map.get(horizon_key, horizon_key)} forecast",
+                )
+                fig_shap.update_layout(yaxis_title="", xaxis_title="SHAP value (impact on prediction)")
+                st.plotly_chart(fig_shap, use_container_width=True)
+
+        st.caption(
+            "Positive values push the predicted AQI higher; negative values pull it lower. "
+            "Based on SHAP values computed against a sample of recent historical readings."
+        )
 
     df_breakdown = pd.DataFrame(breakdown_data)
     st.dataframe(df_breakdown, use_container_width=True, hide_index=True)
