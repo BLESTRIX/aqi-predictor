@@ -2,53 +2,80 @@ import pytest
 import pandas as pd
 import numpy as np
 from src.features.build_features import (
-    compute_time_features,
-    compute_lag_features,
-    compute_rolling_features,
-    calculate_aqi_subindex,
-    engineer_all_features
+    enforce_12h_cadence,
+    create_time_features,
+    create_daily_lags_and_rolling,
+    create_target_variables,
+    engineer_features,
 )
 
 
-def test_calculate_aqi_subindex():
-    assert calculate_aqi_subindex(0.0) == 0.0
-    assert calculate_aqi_subindex(12.0) == 50.0
-    assert calculate_aqi_subindex(35.4) == 100.0
-    assert calculate_aqi_subindex(55.4) == 150.0
-
-
-def test_compute_time_features():
-    df = pd.DataFrame({
-        "timestamp": pd.date_range(start="2026-01-01 00:00:00", periods=5, freq="h")
+def _sample_hourly_df(n_hours=48, start="2026-01-01"):
+    times = pd.date_range(start=start, periods=n_hours, freq="h")
+    return pd.DataFrame({
+        "time": times,
+        "us_aqi": np.linspace(50, 150, n_hours),
+        "pm2_5": np.linspace(10, 60, n_hours),
     })
-    df_res = compute_time_features(df)
-    assert "hour" in df_res.columns
-    assert "hour_sin" in df_res.columns
-    assert "hour_cos" in df_res.columns
-    assert "dayofweek" in df_res.columns
-    assert "month" in df_res.columns
-    assert len(df_res) == 5
 
 
-def test_compute_lag_features():
-    df = pd.DataFrame({
-        "timestamp": pd.date_range(start="2026-01-01 00:00:00", periods=10, freq="h"),
-        "pm2_5": [10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0, 24.0, 26.0, 28.0]
-    })
-    df_res = compute_lag_features(df, target_cols=["pm2_5"], lags=[1, 2])
-    assert "pm2_5_lag_1h" in df_res.columns
-    assert "pm2_5_lag_2h" in df_res.columns
-    assert pd.isna(df_res.iloc[0]["pm2_5_lag_1h"])
-    assert df_res.iloc[1]["pm2_5_lag_1h"] == 10.0
+def test_enforce_12h_cadence_resamples_to_12h_grid():
+    df = _sample_hourly_df(n_hours=48)
+    result = enforce_12h_cadence(df)
+
+    assert "time" in result.columns
+    # 48 hourly rows -> 4 buckets of 12h
+    assert len(result) == 4
+    diffs = result["time"].diff().dropna()
+    assert all(diffs == pd.Timedelta(hours=12))
 
 
-def test_engineer_all_features():
-    df = pd.DataFrame({
-        "timestamp": pd.date_range(start="2026-01-01 00:00:00", periods=5, freq="h"),
-        "pm2_5": [10.0, 15.0, 20.0, 25.0, 30.0],
-        "pm10": [20.0, 30.0, 40.0, 50.0, 60.0]
-    })
-    df_res = engineer_all_features(df)
-    assert "calculated_aqi" in df_res.columns
-    assert "hour_sin" in df_res.columns
-    assert "pm2_5_lag_1h" in df_res.columns
+def test_create_time_features_adds_expected_columns():
+    df = _sample_hourly_df(n_hours=24)
+    df = enforce_12h_cadence(df)
+    result = create_time_features(df)
+
+    for col in ["day_of_week", "day", "month", "month_sin", "month_cos"]:
+        assert col in result.columns
+    # sin/cos should be bounded
+    assert result["month_sin"].between(-1, 1).all()
+    assert result["month_cos"].between(-1, 1).all()
+
+
+def test_create_daily_lags_and_rolling_adds_lag_and_rolling_columns():
+    df = _sample_hourly_df(n_hours=48)
+    df = enforce_12h_cadence(df)
+    result = create_daily_lags_and_rolling(df)
+
+    assert "aqi_lag_1d" in result.columns
+    assert "aqi_change_rate_1d" in result.columns
+    assert "aqi_rolling_mean_3d" in result.columns
+    # first row's lag should be NaN (no prior value)
+    assert pd.isna(result["aqi_lag_1d"].iloc[0])
+
+
+def test_create_target_variables_shifts_correctly():
+    df = _sample_hourly_df(n_hours=96)
+    df = enforce_12h_cadence(df)
+    result = create_target_variables(df)
+
+    assert "target_aqi_24h" in result.columns
+    assert "target_aqi_48h" in result.columns
+    assert "target_aqi_72h" in result.columns
+
+    # target_aqi_24h at row i should equal us_aqi at row i+2 (2 steps of 12h = 24h)
+    non_null = result.dropna(subset=["target_aqi_24h"])
+    idx = non_null.index[0]
+    assert result.loc[idx, "target_aqi_24h"] == pytest.approx(result.loc[idx + 2, "us_aqi"])
+
+
+def test_engineer_features_end_to_end_drops_nan_feature_rows():
+    df = _sample_hourly_df(n_hours=240)  # enough rows to survive dropna after shifting
+    result = engineer_features(df)
+
+    assert isinstance(result, pd.DataFrame)
+    assert "location" in result.columns
+    assert "event_timestamp" in result.columns
+    # feature columns (non-target) must have no NaNs
+    feature_cols = [c for c in result.columns if not c.startswith("target_")]
+    assert not result[feature_cols].isna().any().any()

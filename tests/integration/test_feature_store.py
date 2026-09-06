@@ -1,29 +1,55 @@
 import pytest
 import pandas as pd
 from unittest.mock import patch, MagicMock
-from src.features.feature_store import HopsworksFeatureStore
+from src.features.feature_store import push_to_feature_store
 
 
-def test_feature_store_offline_mode():
-    fs = HopsworksFeatureStore(api_key=None)
-    df_loaded = fs.load_features()
-    assert isinstance(df_loaded, pd.DataFrame)
-    assert df_loaded.empty
+@patch("src.features.feature_store.HOPSWORKS_API_KEY", None)
+def test_push_to_feature_store_raises_without_api_key():
+    df = pd.DataFrame({"time": pd.date_range("2026-01-01", periods=3), "us_aqi": [1, 2, 3]})
+    with pytest.raises(ValueError):
+        push_to_feature_store(df)
 
 
-@patch("src.features.feature_store.HopsworksFeatureStore.get_feature_store")
-def test_feature_store_save_mock(mock_get_fs):
+@patch("src.features.feature_store.HOPSWORKS_API_KEY", "fake_key")
+@patch("src.features.feature_store.hopsworks.login")
+def test_push_to_feature_store_calls_insert(mock_login):
+    mock_project = MagicMock()
     mock_fs = MagicMock()
     mock_fg = MagicMock()
-    mock_fs.get_or_create_feature_group.return_value = mock_fg
-    mock_get_fs.return_value = mock_fs
 
-    fs = HopsworksFeatureStore(api_key="mock_key", project_name="mock_project")
-    df_dummy = pd.DataFrame({
-        "timestamp": pd.date_range("2026-01-01", periods=3),
-        "pm2_5": [10, 15, 20]
+    mock_login.return_value = mock_project
+    mock_project.get_feature_store.return_value = mock_fs
+    mock_fs.get_or_create_feature_group.return_value = mock_fg
+
+    df = pd.DataFrame({
+        "time": pd.date_range("2026-01-01", periods=3),
+        "location": ["islamabad"] * 3,
+        "event_timestamp": [1, 2, 3],
+        "us_aqi": [80, 90, 100],
     })
 
-    result = fs.save_features(df_dummy)
-    assert result is True
+    push_to_feature_store(df)
+
+    mock_login.assert_called_once()
+    mock_fs.get_or_create_feature_group.assert_called_once()
     mock_fg.insert.assert_called_once()
+
+
+@patch("src.features.feature_store.HOPSWORKS_API_KEY", "fake_key")
+@patch("src.features.feature_store.hopsworks.login")
+def test_push_to_feature_store_uses_configured_feature_group_name(mock_login):
+    mock_project = MagicMock()
+    mock_fs = MagicMock()
+    mock_fg = MagicMock()
+
+    mock_login.return_value = mock_project
+    mock_project.get_feature_store.return_value = mock_fs
+    mock_fs.get_or_create_feature_group.return_value = mock_fg
+
+    df = pd.DataFrame({"time": pd.date_range("2026-01-01", periods=2), "us_aqi": [1, 2]})
+    push_to_feature_store(df)
+
+    _, kwargs = mock_fs.get_or_create_feature_group.call_args
+    assert kwargs["name"] == "islamabad_aqi_features"
+    assert kwargs["primary_key"] == ["location", "event_timestamp"]
