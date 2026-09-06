@@ -296,3 +296,59 @@
 2026-09-06 07:39:56,811 - hopsworks_common.client.external - INFO - Initializing external client
 2026-09-06 07:39:56,811 - hopsworks_common.client.external - INFO - Base URL: https://eu-west.cloud.hopsworks.ai:443
 2026-09-06 07:40:00,690 - hsfs.engine.python - INFO - Python Engine initialized.
+2026-09-06 13:33:13,309 - hopsworks_common.client.external - INFO - Initializing external client
+2026-09-06 13:33:13,321 - hopsworks_common.client.external - INFO - Base URL: https://eu-west.cloud.hopsworks.ai:443
+2026-09-06 13:33:26,328 - hsfs.engine.python - INFO - Python Engine initialized.
+2026-09-06 13:33:49,202 - hopsworks_common.engine.execution_engine - INFO - Waiting for execution to finish. Current state: SUBMITTED. Final status: UNDEFINED
+2026-09-06 13:33:52,483 - hopsworks_common.engine.execution_engine - INFO - Waiting for execution to finish. Current state: RUNNING. Final status: UNDEFINED
+2026-09-06 13:36:18,811 - hopsworks_common.engine.execution_engine - INFO - Waiting for execution to finish. Current state: AGGREGATING_LOGS. Final status: FAILED
+2026-09-06 13:36:19,601 - hopsworks_common.engine.execution_engine - INFO - Waiting for log aggregation to finish.
+2026-09-06 13:36:29,752 - hopsworks_common.engine.execution_engine - ERROR - Execution failed with status: FAILED. See the logs for more information.
+2026-09-06 13:36:29,894 - hopsworks_common.client.external - INFO - Closing external client and cleaning up certificates.
+2026-09-06 13:36:29,904 - hopsworks_common.connection - INFO - Connection closed.
+2026-09-06 13:37:39,550 - hopsworks_common.client.external - INFO - Initializing external client
+2026-09-06 13:37:39,551 - hopsworks_common.client.external - INFO - Base URL: https://eu-west.cloud.hopsworks.ai:443
+2026-09-06 13:37:45,333 - hsfs.engine.python - INFO - Python Engine initialized.
+2026-09-06 13:37:47,722 - aqi_predictor - INFO - Fetching feature group 'islamabad_aqi_features' version 2...
+2026-09-06 13:37:55,481 - aqi_predictor - INFO - Training data shape: (2488, 11)
+2026-09-06 13:37:55,483 - aqi_predictor - INFO - Feature columns: ['us_aqi', 'day_of_week', 'day', 'month', 'month_sin', 'month_cos', 'aqi_lag_1d', 'aqi_change_rate_1d', 'aqi_rolling_mean_3d', 'aqi_rolling_mean_7d', 'aqi_rolling_max_7d']
+2026-09-06 13:37:55,489 - aqi_predictor - INFO - [Persistence (baseline)] target_aqi_24h: RMSE=17.52  MAE=11.44  R2=0.857
+2026-09-06 13:37:55,491 - aqi_predictor - INFO - [Persistence (baseline)] target_aqi_48h: RMSE=22.97  MAE=15.68  R2=0.754
+2026-09-06 13:37:55,492 - aqi_predictor - INFO - [Persistence (baseline)] target_aqi_72h: RMSE=26.15  MAE=17.99  R2=0.681
+2026-09-06 13:37:55,492 - aqi_predictor - INFO - Training RandomForest...
+2026-09-06 13:37:56,672 - aqi_predictor - INFO - [RandomForest] Overall: {'rmse': np.float64(22.197646415119525), 'mae': 15.980258522225194, 'r2_score': 0.7702406193603533}
+2026-09-06 13:37:56,674 - aqi_predictor - INFO - [RandomForest] target_aqi_24h: RMSE=18.11  MAE=12.77  R2=0.847
+2026-09-06 13:37:56,675 - aqi_predictor - INFO - [RandomForest] target_aqi_48h: RMSE=22.76  MAE=16.86  R2=0.759
+2026-09-06 13:37:56,677 - aqi_predictor - INFO - [RandomForest] target_aqi_72h: RMSE=25.15  MAE=18.32  R2=0.705
+2026-09-06 13:37:56,677 - aqi_predictor - INFO - Training XGBoost...
+2026-09-06 13:37:58,838 - aqi_predictor - INFO - [XGBoost] Overall: {'rmse': np.float64(22.526152031874695), 'mae': 16.54777609246332, 'r2_score': 0.7633898259013671}
+2026-09-06 13:37:58,839 - aqi_predictor - INFO - [XGBoost] target_aqi_24h: RMSE=18.00  MAE=12.95  R2=0.849
+2026-09-06 13:37:58,841 - aqi_predictor - INFO - [XGBoost] target_aqi_48h: RMSE=23.33  MAE=17.59  R2=0.746
+2026-09-06 13:37:58,842 - aqi_predictor - INFO - [XGBoost] target_aqi_72h: RMSE=25.58  MAE=19.10  R2=0.695
+2026-09-06 13:37:58,842 - aqi_predictor - INFO - Training Ridge...
+2026-09-06 13:37:58,861 - aqi_predictor - INFO - [Ridge] Overall: {'rmse': np.float64(20.592958471335123), 'mae': 15.893088341994325, 'r2_score': 0.8022589296257804}
+2026-09-06 13:37:58,863 - aqi_predictor - INFO - [Ridge] target_aqi_24h: RMSE=16.71  MAE=12.36  R2=0.870
+2026-09-06 13:37:58,864 - aqi_predictor - INFO - [Ridge] target_aqi_48h: RMSE=21.17  MAE=16.69  R2=0.791
+2026-09-06 13:37:58,865 - aqi_predictor - INFO - [Ridge] target_aqi_72h: RMSE=23.34  MAE=18.63  R2=0.746
+2026-09-06 13:37:58,866 - aqi_predictor - INFO - Training MLP...
+2026-09-06 13:38:00,147 - aqi_predictor - INFO - [MLP] Overall: {'rmse': np.float64(21.971141048885777), 'mae': 16.83966926724389, 'r2_score': 0.7749056378120073}
+2026-09-06 13:38:00,148 - aqi_predictor - INFO - [MLP] target_aqi_24h: RMSE=17.76  MAE=13.16  R2=0.853
+2026-09-06 13:38:00,149 - aqi_predictor - INFO - [MLP] target_aqi_48h: RMSE=22.30  MAE=17.52  R2=0.768
+2026-09-06 13:38:00,150 - aqi_predictor - INFO - [MLP] target_aqi_72h: RMSE=25.21  MAE=19.84  R2=0.704
+2026-09-06 13:38:00,231 - aqi_predictor - INFO - Persistence (baseline, not deployable): {'target_aqi_24h': 0.857, 'target_aqi_48h': 0.754, 'target_aqi_72h': 0.681}
+2026-09-06 13:38:00,231 - aqi_predictor - INFO - RandomForest: R2=0.770  RMSE=22.20  MAE=15.98
+2026-09-06 13:38:00,231 - aqi_predictor - INFO - XGBoost: R2=0.763  RMSE=22.53  MAE=16.55
+2026-09-06 13:38:00,232 - aqi_predictor - INFO - Ridge: R2=0.802  RMSE=20.59  MAE=15.89
+2026-09-06 13:38:00,232 - aqi_predictor - INFO - MLP: R2=0.775  RMSE=21.97  MAE=16.84
+2026-09-06 13:38:00,232 - aqi_predictor - INFO - Selected best model: Ridge (R2=0.802)
+2026-09-06 13:38:00,237 - aqi_predictor - INFO - [Ridge] target_aqi_24h: RMSE=16.71  MAE=12.36  R2=0.870
+2026-09-06 13:38:00,238 - aqi_predictor - INFO - [Ridge] target_aqi_48h: RMSE=21.17  MAE=16.69  R2=0.791
+2026-09-06 13:38:00,240 - aqi_predictor - INFO - [Ridge] target_aqi_72h: RMSE=23.34  MAE=18.63  R2=0.746
+2026-09-06 13:38:00,244 - aqi_predictor - INFO - Model saved locally to saved_models\model.pkl
+2026-09-06 13:38:00,245 - aqi_predictor - INFO - Authenticating with Hopsworks...
+2026-09-06 13:38:00,245 - hopsworks_common.client.external - INFO - Closing external client and cleaning up certificates.
+2026-09-06 13:38:00,247 - hopsworks_common.connection - INFO - Connection closed.
+2026-09-06 13:38:00,249 - hopsworks_common.client.external - INFO - Initializing external client
+2026-09-06 13:38:00,249 - hopsworks_common.client.external - INFO - Base URL: https://eu-west.cloud.hopsworks.ai:443
+2026-09-06 13:38:03,944 - hsfs.engine.python - INFO - Python Engine initialized.
+2026-09-06 13:38:06,119 - aqi_predictor - INFO - Uploading model 'islamabad_aqi_model_24h' to registry...
